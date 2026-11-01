@@ -70,7 +70,7 @@ public class JsonHandler {
                 addTask(task);
             }
             case "update" ->{
-                updateTask(uniqueID, task);
+                //updateTask(uniqueID, task);
             }
             case "delete" ->{
 
@@ -85,7 +85,6 @@ public class JsonHandler {
             
             String existsing = Files.readString(path).trim();
             String newTask = taskToJson(task, uniqueID, now.format(formatter), now.format(formatter), status);
-            uniqueID += 1;
             String content = existsing.isEmpty() || existsing.equals("[]")
                     ? ""
                     : existsing.substring(1, existsing.length() - 1).trim();
@@ -128,10 +127,8 @@ public class JsonHandler {
                             return;
                         }
                     }
-                    
                 }
             }
-
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

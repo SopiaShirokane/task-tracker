@@ -4,6 +4,8 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.*;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
 
 public class JsonHandler {
     public static final String HOME = System.getProperty("user.home");
@@ -54,7 +56,18 @@ public class JsonHandler {
                 }
                 """.formatted(id, task, createdAt, updatedAt, status);
     }
-
+    
+    public static String taskToJsonComma(String task, int id, String createdAt, String updatedAt, String status){
+        return """
+                {
+                    "id": %d,
+                    "description": "%s",
+                    "createdAt": "%s",
+                    "updatedAt": "%s",
+                    "status": "%s"
+                },
+                """.formatted(id, task, createdAt, updatedAt, status);
+    }
     public static void jsonHandle(String command, String task){
 
         try {
@@ -98,38 +111,37 @@ public class JsonHandler {
         }
     }
 
-    public static void updateTask(int id, String task){
+    public static void updateTask(int id, String task) {
         try {
             String content = Files.readString(path).trim();
-            if (!content.isEmpty() && !content.equals("[]")){
-                String arrayContent = content.substring(1, content.length() - 1);
-                String[] tasks = arrayContent.split("},");
-                for (int i = 0; i < tasks.length; i++) if (!tasks[i].endsWith("}")) tasks[i] += "}";
-                tasks[tasks.length - 1] = "\n" + tasks[tasks.length - 1].substring(1, tasks[tasks.length - 1].length() - 1);
-                for (int i = 0; i < tasks.length; i++){
-                    String jsonTask = tasks[i].trim();
-                    int idIndex = jsonTask.indexOf("\"id\":");
-                    if (idIndex == -1){
-                        System.out.println("Task ID not found");
-                        return;
-                    }
-                    else{
-                        int commaIndex = jsonTask.indexOf(",");
-                        String idStr = jsonTask.substring(idIndex + 5, commaIndex).trim();
-                        int idParsed = Integer.parseInt(idStr);
-                        if (id == idParsed){
-                            int createdAt = jsonTask.indexOf("\"createdAt\":");
-                            int timeCommaIndex = jsonTask.indexOf("m\",");
-                            String timeCreated = jsonTask.substring(createdAt + 14, timeCommaIndex + 1);
-                            tasks[i] = taskToJson(task, idParsed, timeCreated, LocalDateTime.now().format(formatter), "unfinished");
-                            String updated = "[\n" + String.join(",\n", tasks).trim() + "\n]";
-                            Files.writeString(path, updated);
-                            return;
-                        }
-                    }
+            if (content.isEmpty() || content.equals("[]")) return;
+
+            String arrayContent = content.substring(1, content.length() - 1).trim();
+            List<String> result = new ArrayList<>();
+            boolean found = false;
+
+            for (String piece : arrayContent.split("},")) {
+                String json = piece.trim();
+                if (!json.endsWith("}")) json += "}";   // split removed the brace
+
+                if (!found && json.contains("\"id\": " + id + ",")) {
+                    int start = json.indexOf("\"createdAt\": \"") + 14;
+                    int end = json.indexOf("\"", start);
+                    String createdAt = json.substring(start, end);
+                    json = taskToJson(task, id, createdAt,
+                            LocalDateTime.now().format(formatter), "unfinished").trim();
+                    found = true;
                 }
+                result.add(json);
             }
-        } catch (IOException e) {
+
+            if (!found) {
+                System.out.println("Task ID not found");
+                return;
+            }
+            Files.writeString(path, "[\n" + String.join(",\n", result) + "\n]");
+        } 
+        catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
